@@ -33,6 +33,11 @@
         android:icon="?attr/iconActionRequestReadReceipt"
     />
     <item
+        android:id="@+id/encrypt_or_decrypt"
+        android:title="@string/enable_JARL"
+        app:showAsAction="always"
+        />
+    <item
         android:id="@+id/openpgp_encrypt_enable"
         android:title="@string/enable_encryption"
         app:showAsAction="never"

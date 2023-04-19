@@ -1,9 +1,16 @@
 package com.fsck.k9.message;
 
 
+import java.nio.charset.Charset;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import android.app.Activity;
 import android.app.PendingIntent;
@@ -36,7 +43,6 @@ import com.fsck.k9.mail.internet.TextBody;
 import com.fsck.k9.mailstore.TempFileBody;
 import com.fsck.k9.message.quote.InsertableHtmlContent;
 import org.apache.james.mime4j.util.MimeUtil;
-
 
 public abstract class MessageBuilder {
     private final MessageIdGenerator messageIdGenerator;

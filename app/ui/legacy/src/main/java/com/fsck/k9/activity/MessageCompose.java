@@ -1,7 +1,11 @@
 package com.fsck.k9.activity;
 
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -22,14 +26,19 @@ import android.content.IntentSender.SendIntentException;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build.VERSION;
+import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
 import androidx.annotation.Nullable;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.ActionBar;
+
+import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -52,6 +61,7 @@ import com.fsck.k9.Account;
 import com.fsck.k9.Account.MessageFormat;
 import com.fsck.k9.DI;
 import com.fsck.k9.Identity;
+import com.fsck.k9.JARL.JARL;
 import com.fsck.k9.K9;
 import com.fsck.k9.Preferences;
 import com.fsck.k9.activity.MessageLoaderHelper.MessageLoaderCallbacks;
@@ -243,6 +253,10 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     private boolean navigateUp;
 
     private boolean sendMessageHasBeenTriggered = false;
+
+    private boolean encrypt = false;
+
+    private String keyEncrypt;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -715,7 +729,25 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             recipientPresenter.builderSetProperties(builder);
         }
 
-        builder.setSubject(Utility.stripNewLines(subjectView.getText().toString()))
+        String subjectText = Utility.stripNewLines(subjectView.getText().toString());
+        String messageText = CrLfConverter.toCrLf(messageContentView.getText());
+
+        if (encrypt) {
+            try {
+                subjectText = JARL.encryptStringToHexString(subjectText, "MBCHc1RWuPJIDxn0");
+            } catch (Exception e) {
+                Timber.e(e.getMessage());
+            }
+
+            try {
+                messageText = JARL.encryptStringToHexString(messageText, "MBCHc1RWuPJIDxn0");
+            }
+            catch (Exception e) {
+                Timber.e(e.getMessage());
+            }
+        }
+
+        builder.setSubject(subjectText)
                 .setSentDate(new Date())
                 .setHideTimeZone(K9.isHideTimeZone())
                 .setInReplyTo(repliedToMessageId)
@@ -724,7 +756,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 .setIdentity(identity)
                 .setReplyTo(replyToPresenter.getAddresses())
                 .setMessageFormat(currentMessageFormat)
-                .setText(CrLfConverter.toCrLf(messageContentView.getText()))
+                .setText(messageText)
                 .setAttachments(attachmentPresenter.getAttachments())
                 .setInlineAttachments(attachmentPresenter.getInlineAttachments())
                 .setSignature(CrLfConverter.toCrLf(signatureView.getText()))
@@ -1044,6 +1076,63 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             attachmentPresenter.onClickAddAttachment(recipientPresenter);
         } else if (id == R.id.read_receipt) {
             onReadReceipt();
+        } else if (id == R.id.encrypt_or_decrypt) {
+            String encryptString = getString(R.string.enable_JARL);
+            String notEncryptString = getString(R.string.disable_JARL);
+
+            if (item.getTitle().toString().equals(encryptString)) {
+                Context buildContext = this;
+                AlertDialog.Builder builder = new AlertDialog.Builder(buildContext);
+                builder.setTitle("Enter encryption key");
+
+                // Set up the input
+                final EditText input = new EditText(this);
+                // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                builder.setView(input);
+
+                // Set up the buttons
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        keyEncrypt = input.getText().toString();
+                        if (JARL.isValidKey(keyEncrypt)) {
+                            encrypt = true;
+                            item.setTitle(R.string.disable_JARL);
+                            dialog.cancel();
+                        } else {
+                            keyEncrypt = "";
+                            encrypt = false;
+
+                            AlertDialog.Builder builderError = new AlertDialog.Builder(buildContext);
+                            builderError.setTitle("Key is not valid");
+                            builderError.setMessage("Key must be the length of 128 bits or 16 bytes when converted to bytes using UTF-8 encoding.");
+
+                            builderError.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.cancel();
+                                }
+                            });
+                            builderError.show();
+                        }
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+                builder.show();
+            } else {
+                item.setTitle(R.string.enable_JARL);
+                keyEncrypt = "";
+                encrypt = false;
+            }
+
+
         } else {
             return super.onOptionsItemSelected(item);
         }

@@ -11,6 +11,7 @@ dependencies {
     implementation(projects.app.autodiscovery.providersxml)
     implementation(projects.mail.common)
     implementation(projects.uiUtils.toolbarBottomSheet)
+    implementation("org.apache.commons:commons-math3:3.6.1")
 
     // Remove AccountSetupIncoming's dependency on these
     compileOnly(projects.mail.protocols.imap)
