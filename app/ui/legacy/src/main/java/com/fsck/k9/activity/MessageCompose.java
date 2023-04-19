@@ -2,6 +2,7 @@ package com.fsck.k9.activity;
 
 
 import java.io.File;
+import java.math.BigInteger;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +33,7 @@ import androidx.appcompat.app.ActionBar;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -53,6 +55,7 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.fsck.k9.Account;
 import com.fsck.k9.Account.MessageFormat;
 import com.fsck.k9.DI;
+import com.fsck.k9.ECDSA.ECDSA;
 import com.fsck.k9.Identity;
 import com.fsck.k9.JARL.JARL;
 import com.fsck.k9.K9;
@@ -251,6 +254,12 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     private boolean encryptOrDecrypt = false;
 
     private String keyEncryptOrDecrypt;
+
+    private boolean signOrUnsign = false;
+
+    private String privateKeySign;
+
+    private String publicKeysSign;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -732,12 +741,26 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         String subjectText = Utility.stripNewLines(subjectView.getText().toString());
         String messageText = CrLfConverter.toCrLf(messageContentView.getText());
 
+        if (signOrUnsign) {
+            ECDSA ecc = new ECDSA();
+            ecc.setPrivateKey(new BigInteger(privateKeySign, 16));
+            BigInteger[] signature = ecc.createSignature(messageText);
+            String signature1 = signature[0].toString(16);
+            String signature2 = signature[1].toString(16);
+
+            messageText += "\n<ds>\n";
+            messageText += signature1 + "\n";
+            messageText += signature2 + "\n";
+            messageText += "</ds>";
+        }
+
         if (encryptOrDecrypt) {
             try {
                 subjectText = JARL.encryptStringToHexString(subjectText, keyEncryptOrDecrypt);
             } catch (Exception e) {
                 Timber.e(e.getMessage());
             }
+
 
             try {
                 messageText = JARL.encryptStringToHexString(messageText, keyEncryptOrDecrypt);
@@ -1135,7 +1158,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             } else {
                 Context buildContext = this;
                 AlertDialog.Builder builder = new AlertDialog.Builder(buildContext);
-                builder.setTitle("Enter decryption key");
+                builder.setTitle("Enter private key");
 
                 // Set up the input
                 final EditText input = new EditText(this);
@@ -1205,10 +1228,164 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 builder.show();
             }
 
+        } else if (id == R.id.sign_or_unsign) {
+            if (action != Action.DECRYPT_DRAFT) {
+
+                Context buildContext = this;
+                AlertDialog.Builder builder = new AlertDialog.Builder(buildContext);
+                builder.setTitle("Enter private key");
+
+                // Set up the input
+                final EditText input = new EditText(this);
+                // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                builder.setView(input);
+
+                // Set up the buttons
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        privateKeySign = input.getText().toString();
+                        signOrUnsign = true;
+                        item.setTitle(R.string.unsign_message);
+                        dialog.cancel();
+
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+                builder.show();
+            } else {
+                Context buildContext = this;
+                AlertDialog.Builder builder = new AlertDialog.Builder(buildContext);
+                builder.setTitle("Enter public keys (append both of them)");
+
+                // Set up the input
+                final EditText input = new EditText(this);
+                // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+                input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                builder.setView(input);
+
+                // Set up the buttons
+                builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        publicKeysSign = input.getText().toString();
+                        signOrUnsign = true;
+                        builder.setMessage("Wait while message signing is being verified...");
+//                        try {
+                            String[] publicKeys = divideString(publicKeysSign);
+                            String publicKey1 = publicKeys[0];
+                            String publicKey2 = publicKeys[1];
+
+                            Log.d("ECDSA-PUB", publicKey1 + " " + publicKey2);
+                            String[] signatures = extractSignature(CrLfConverter.toCrLf(messageContentView.getText()));
+                            String signature1 = signatures[0];
+                            String signature2 = signatures[1];
+                            Log.d("ECDSA-SIGN", signature1 + " " + signature2);
+
+                            ECDSA ecc = new ECDSA();
+                            ecc.setPublicKey(new BigInteger(publicKey1, 16), new BigInteger(publicKey2, 16));
+
+                            AlertDialog.Builder buildInfo = new AlertDialog.Builder(buildContext);
+                            buildInfo.setTitle("Verification Result");
+
+                            buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.cancel();
+                                }
+                            });
+
+                            Log.d("ECDSA-TEXT", extractTextBeforeDsTag(CrLfConverter.toCrLf(messageContentView.getText())));
+                            if (ecc.verifySignature(
+                                new BigInteger[] {new BigInteger(signature1, 16), new BigInteger(signature2, 16)},
+                                extractTextBeforeDsTag(CrLfConverter.toCrLf(messageContentView.getText()))
+                            )) {
+                                buildInfo.setMessage("Sign verified");
+                            } else {
+                                buildInfo.setMessage("Sign not verified");
+                            }
+
+                            buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.cancel();
+                                }
+                            });
+
+                            buildInfo.show();
+
+//                        } catch (Exception e) {
+//                            Timber.e(e.getMessage());
+//                            publicKeysSign = "";
+//                            signOrUnsign = false;
+//
+//                            AlertDialog.Builder builderError = new AlertDialog.Builder(buildContext);
+//                            builderError.setTitle("Verification Process Failed");
+//                            builderError.setMessage("An error happened when trying to verify.");
+//
+//                            builderError.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+//                                @Override
+//                                public void onClick(DialogInterface dialog, int which) {
+//                                    dialog.cancel();
+//                                }
+//                            });
+//                            builderError.show();
+//                        }
+
+                    }
+                });
+                builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.cancel();
+                    }
+                });
+
+                builder.show();
+            }
         } else {
             return super.onOptionsItemSelected(item);
         }
         return true;
+    }
+
+    public static String[] extractSignature(String str) {
+        int start = str.indexOf("\n<ds>") + "\n<ds>".length();
+        int end = str.indexOf("\n</ds>", start);
+        if (start < 0 || end < 0) {
+            // Signature key not found
+            return null;
+        }
+        return str.substring(start, end).split("\\n");
+    }
+
+    public static String extractTextBeforeDsTag(String str) {
+        int index = str.indexOf("\n<ds>");
+        if (index < 0) {
+            // <ds> tag not found
+            return null;
+        }
+        return str.substring(0, index);
+    }
+
+    public static String[] divideString(String str) {
+        int len = str.length();
+        if (len % 2 != 0) {
+            // String length is odd, cannot divide into two equal parts
+            return null;
+        }
+        int mid = len / 2;
+        String[] result = new String[2];
+        result[0] = str.substring(0, mid);
+        result[1] = str.substring(mid);
+        return result;
     }
 
     @Override
@@ -1234,9 +1411,13 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     public boolean onPrepareOptionsMenu(Menu menu) {
         super.onPrepareOptionsMenu(menu);
         var encryptMenu = menu.findItem(R.id.encrypt_or_decrypt);
+        var signMenu = menu.findItem(R.id.sign_or_unsign);
         if (action == Action.DECRYPT_DRAFT) {
             var newTitle = getString(R.string.decrypt_JARL);
             encryptMenu.setTitle(newTitle);
+
+            var newTitle2 = getString(R.string.verify_sign_message);
+            signMenu.setTitle(newTitle2);
         }
 
         recipientPresenter.onPrepareOptionsMenu(menu);

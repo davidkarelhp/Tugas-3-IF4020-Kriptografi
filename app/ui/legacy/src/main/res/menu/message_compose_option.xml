@@ -35,7 +35,12 @@
     <item
         android:id="@+id/encrypt_or_decrypt"
         android:title="@string/enable_JARL"
-        app:showAsAction="always"
+        app:showAsAction="never"
+        />
+    <item
+        android:id="@+id/sign_or_unsign"
+        android:title="@string/sign_message"
+        app:showAsAction="never"
         />
     <item
         android:id="@+id/openpgp_encrypt_enable"

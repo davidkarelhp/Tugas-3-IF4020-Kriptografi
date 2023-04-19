@@ -12,6 +12,7 @@ dependencies {
     implementation(projects.mail.common)
     implementation(projects.uiUtils.toolbarBottomSheet)
     implementation("org.apache.commons:commons-math3:3.6.1")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.73")
 
     // Remove AccountSetupIncoming's dependency on these
     compileOnly(projects.mail.protocols.imap)

@@ -1,5 +1,6 @@
 package com.fsck.k9.ui
 
+import android.app.AlertDialog
 import android.content.Context
 import android.content.res.ColorStateList
 import android.content.res.Resources
@@ -9,10 +10,12 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.TypedValue
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.core.view.GravityCompat
 import androidx.drawerlayout.widget.DrawerLayout
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import com.fsck.k9.Account
+import com.fsck.k9.ECDSA.ECDSA
 import com.fsck.k9.K9
 import com.fsck.k9.activity.MessageList
 import com.fsck.k9.controller.MessagingController
@@ -272,6 +275,15 @@ class K9Drawer(private val parent: MessageList, savedInstanceState: Bundle?) : K
     private fun addFooterItems() {
         sliderView.addStickyFooterItem(
             PrimaryDrawerItem().apply {
+                nameRes = R.string.generate_key_action
+                iconRes = folderIconProvider.iconFolderResId
+                identifier = DRAWER_ID_GENERATE_KEY
+                isSelectable = false
+            },
+        )
+
+        sliderView.addStickyFooterItem(
+            PrimaryDrawerItem().apply {
                 nameRes = R.string.folders_action
                 iconRes = folderIconProvider.iconFolderResId
                 identifier = DRAWER_ID_FOLDERS
@@ -345,11 +357,39 @@ class K9Drawer(private val parent: MessageList, savedInstanceState: Bundle?) : K
             DRAWER_ID_PREFERENCES -> SettingsActivity.launch(parent)
             DRAWER_ID_FOLDERS -> parent.launchManageFoldersScreen()
             DRAWER_ID_UNIFIED_INBOX -> parent.openUnifiedInbox()
+            DRAWER_ID_GENERATE_KEY -> handleGenerateKey()
             else -> {
                 val folder = drawerItem.tag as Folder
                 parent.openFolder(folder.id)
             }
         }
+    }
+
+    private fun handleGenerateKey() {
+        val buildContext: Context = parent
+        val builder = AlertDialog.Builder(buildContext)
+        val ecc = ECDSA()
+        ecc.generateKey()
+
+        val privateKey = ecc.privateKey.d.toString(16)
+        val publicKey1 = ecc.publicKey.q.xCoord.toString()
+        val publicKey2 = ecc.publicKey.q.yCoord.toString()
+
+        builder.setTitle("Generated keys")
+
+        // Set up the text
+        val showText = TextView(buildContext)
+        showText.setTextIsSelectable(true);
+        showText.text = "Private Key: ${privateKey}\n\nPublic Key 1: ${publicKey1}\n\nPublic Key 2: ${publicKey2}";
+        builder.setView(showText)
+
+        builder.setPositiveButton(
+            "OK",
+        ) { dialog, which ->
+            dialog.cancel()
+        }
+
+        builder.show()
     }
 
     private fun setUserFolders(folderList: FolderList?) {
@@ -529,6 +569,7 @@ class K9Drawer(private val parent: MessageList, savedInstanceState: Bundle?) : K
         private const val DRAWER_ID_DIVIDER: Long = 1
         private const val DRAWER_ID_PREFERENCES: Long = 2
         private const val DRAWER_ID_FOLDERS: Long = 3
+        private const val DRAWER_ID_GENERATE_KEY: Long = 4
 
         private const val PROGRESS_VIEW_END_OFFSET = 32
         private const val PROGRESS_VIEW_SLINGSHOT_DISTANCE = 48

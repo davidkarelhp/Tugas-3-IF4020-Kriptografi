@@ -131,6 +131,7 @@ Please submit bug reports, contribute new features and ask questions at
     <string name="new_messages_title">New messages</string>
     <string name="preferences_action">Settings</string>
     <string name="folders_action">Manage folders</string>
+    <string name="generate_key_action">Generate Key</string>
     <string name="account_settings_action">Account settings</string>
     <string name="remove_account_action">Remove account</string>
 
@@ -1214,6 +1215,9 @@ Please submit bug reports, contribute new features and ask questions at
     <string name="enable_JARL">Encrypt Message</string>
     <string name="disable_JARL">Don\'t Encrypt Message</string>
     <string name="decrypt_JARL">Decrypt Message</string>
+    <string name="sign_message">Sign Message</string>
+    <string name="unsign_message">Don\'t Sign Message</string>
+    <string name="verify_sign_message">Verify Sign Message</string>
     <string name="openpgp_description_text1">Encrypting messages ensures they can be read by the recipient, and nobody else.</string>
     <string name="openpgp_description_text3">Encryption will only show up if supported by all recipients, and they must have sent you an email before.</string>
     <string name="openpgp_description_text2">Toggle encryption by clicking this icon.</string>
