@@ -9,6 +9,7 @@ import android.content.IntentSender.SendIntentException
 import android.os.Bundle
 import android.os.Parcelable
 import android.os.SystemClock
+import android.util.Log
 import android.view.ContextThemeWrapper
 import android.view.LayoutInflater
 import android.view.Menu
@@ -228,6 +229,10 @@ class MessageViewFragment :
             isEnabled = !isDeleteMenuItemDisabled
         }
 
+        menu.findItem(R.id.decrypt_menu_item).apply {
+            isVisible = true;
+        }
+
         val showToggleUnread = !isOutbox
         menu.findItem(R.id.toggle_unread).isVisible = showToggleUnread
 
@@ -319,10 +324,18 @@ class MessageViewFragment :
             R.id.move_to_drafts -> onMoveToDrafts()
             R.id.unsubscribe -> onUnsubscribe()
             R.id.show_headers -> onShowHeaders()
+            R.id.decrypt_menu_item -> onDecrypt()
             else -> return false
         }
 
         return true
+    }
+
+    private fun onDecrypt() {
+//        Log.i("ON_DECRYPT", messageReference.toIdentityString())
+        val message = checkNotNull(this.message)
+
+        fragmentListener.onDecryptMessage(message.makeMessageReference())
     }
 
     private fun onShowHeaders() {
@@ -864,6 +877,7 @@ class MessageViewFragment :
         fun onReply(messageReference: MessageReference, decryptionResultForReply: Parcelable?)
         fun setProgress(enable: Boolean)
         fun showNextMessageOrReturn()
+        fun onDecryptMessage(messageReference: MessageReference)
     }
 
     private val messageLoaderCallbacks: MessageLoaderCallbacks = object : MessageLoaderCallbacks {

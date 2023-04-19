@@ -91,6 +91,7 @@ Please submit bug reports, contribute new features and ask questions at
     <string name="compose_title_reply_all">Reply all</string>
     <string name="compose_title_forward">Forward</string>
     <string name="compose_title_forward_as_attachment">Forward as attachment</string>
+    <string name="decrypted_message">Decrypted message</string>
 
     <string name="choose_account_title">Choose Account</string>
     <string name="choose_folder_title">Choose Folder</string>
@@ -1212,6 +1213,7 @@ Please submit bug reports, contribute new features and ask questions at
     <string name="disable_encryption">Disable Encryption</string>
     <string name="enable_JARL">Encrypt Message</string>
     <string name="disable_JARL">Don\'t Encrypt Message</string>
+    <string name="decrypt_JARL">Decrypt Message</string>
     <string name="openpgp_description_text1">Encrypting messages ensures they can be read by the recipient, and nobody else.</string>
     <string name="openpgp_description_text3">Encryption will only show up if supported by all recipients, and they must have sent you an email before.</string>
     <string name="openpgp_description_text2">Toggle encryption by clicking this icon.</string>

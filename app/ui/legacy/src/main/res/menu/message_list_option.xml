@@ -106,6 +106,13 @@
 
     <!-- MessageView -->
     <item
+        android:id="@+id/decrypt_menu_item"
+        android:title="@string/decrypt_JARL"
+        android:visible="false"
+        app:showAsAction="never" />
+
+    <!-- MessageView -->
+    <item
         android:id="@+id/unsubscribe"
         android:title="@string/unsubscribe_action"
         android:visible="false"

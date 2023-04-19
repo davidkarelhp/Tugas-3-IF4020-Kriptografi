@@ -1010,6 +1010,10 @@ open class MessageList :
         MessageActions.actionEditDraft(this, messageReference)
     }
 
+    override fun onDecryptMessage(messageReference: MessageReference) {
+        MessageActions.actionDecryptDraft(this, messageReference)
+    }
+
     override fun onReply(messageReference: MessageReference, decryptionResultForReply: Parcelable?) {
         MessageActions.actionReply(this, messageReference, false, decryptionResultForReply)
     }

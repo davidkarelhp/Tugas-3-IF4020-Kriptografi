@@ -101,4 +101,11 @@ public class MessageActions {
         i.setAction(MessageCompose.ACTION_EDIT_DRAFT);
         context.startActivity(i);
     }
+
+    public static void actionDecryptDraft(Context context, MessageReference messageReference) {
+        Intent i = new Intent(context, MessageCompose.class);
+        i.putExtra(MessageCompose.EXTRA_MESSAGE_REFERENCE, messageReference.toIdentityString());
+        i.setAction(MessageCompose.ACTION_DECRYPT_DRAFT);
+        context.startActivity(i);
+    }
 }

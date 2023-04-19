@@ -1,11 +1,7 @@
 package com.fsck.k9.activity;
 
 
-import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -26,8 +22,6 @@ import android.content.IntentSender.SendIntentException;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build.VERSION;
-import android.os.Build.VERSION_CODES;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Parcelable;
@@ -38,7 +32,6 @@ import androidx.appcompat.app.ActionBar;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.text.TextWatcher;
-import android.util.Log;
 import android.util.TypedValue;
 import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
@@ -150,6 +143,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     public static final String ACTION_FORWARD = "com.fsck.k9.intent.action.FORWARD";
     public static final String ACTION_FORWARD_AS_ATTACHMENT = "com.fsck.k9.intent.action.FORWARD_AS_ATTACHMENT";
     public static final String ACTION_EDIT_DRAFT = "com.fsck.k9.intent.action.EDIT_DRAFT";
+    public static final String ACTION_DECRYPT_DRAFT = "com.fsck.k9.intent.action.DECRYPT_DRAFT";
     private static final String ACTION_AUTOCRYPT_PEER = "org.autocrypt.PEER_ACTION";
 
     public static final String EXTRA_ACCOUNT = "account";
@@ -254,9 +248,9 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
     private boolean sendMessageHasBeenTriggered = false;
 
-    private boolean encrypt = false;
+    private boolean encryptOrDecrypt = false;
 
-    private String keyEncrypt;
+    private String keyEncryptOrDecrypt;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -414,6 +408,8 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 this.action = Action.FORWARD_AS_ATTACHMENT;
             } else if (ACTION_EDIT_DRAFT.equals(action)) {
                 this.action = Action.EDIT_DRAFT;
+            } else if (ACTION_DECRYPT_DRAFT.equals(action)) {
+                this.action = Action.DECRYPT_DRAFT;
             } else {
                 // This shouldn't happen
                 Timber.w("MessageCompose was started with an unsupported action");
@@ -447,7 +443,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         if (!relatedMessageProcessed) {
             if (action == Action.REPLY || action == Action.REPLY_ALL ||
                     action == Action.FORWARD || action == Action.FORWARD_AS_ATTACHMENT ||
-                    action == Action.EDIT_DRAFT) {
+                    action == Action.EDIT_DRAFT || action == Action.DECRYPT_DRAFT) {
                 messageLoaderHelper = messageLoaderHelperFactory.createForMessageCompose(this,
                         getSupportLoaderManager(), getSupportFragmentManager(), messageLoaderCallbacks);
                 internalMessageHandler.sendEmptyMessage(MSG_PROGRESS_ON);
@@ -469,7 +465,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         }
 
         if (action == Action.REPLY || action == Action.REPLY_ALL ||
-                action == Action.EDIT_DRAFT) {
+                action == Action.EDIT_DRAFT || action == Action.DECRYPT_DRAFT) {
             //change focus to message body.
             messageContentView.requestFocus();
         } else {
@@ -502,6 +498,10 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         if (savedInstanceState == null) {
             checkAndRequestPermissions();
         }
+
+//        if (action == Action.DECRYPT_DRAFT) {
+//            messageContentView.setKeyListener(null);
+//        }
     }
 
     /**
@@ -562,7 +562,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             CharSequence text = intent.getCharSequenceExtra(Intent.EXTRA_TEXT);
             // Only use EXTRA_TEXT if the body hasn't already been set by the mailto URI
             if (text != null && messageContentView.getText().length() == 0) {
-                messageContentView.setText(CrLfConverter.toLf(text));
+                messageContentView.setText(text.toString());
             }
 
             String type = intent.getType();
@@ -732,15 +732,15 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         String subjectText = Utility.stripNewLines(subjectView.getText().toString());
         String messageText = CrLfConverter.toCrLf(messageContentView.getText());
 
-        if (encrypt) {
+        if (encryptOrDecrypt) {
             try {
-                subjectText = JARL.encryptStringToHexString(subjectText, "MBCHc1RWuPJIDxn0");
+                subjectText = JARL.encryptStringToHexString(subjectText, keyEncryptOrDecrypt);
             } catch (Exception e) {
                 Timber.e(e.getMessage());
             }
 
             try {
-                messageText = JARL.encryptStringToHexString(messageText, "MBCHc1RWuPJIDxn0");
+                messageText = JARL.encryptStringToHexString(messageText, keyEncryptOrDecrypt);
             }
             catch (Exception e) {
                 Timber.e(e.getMessage());
@@ -927,7 +927,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             Timber.v("Switching account from %s to %s", this.account, account);
 
             // on draft edit, make sure we don't keep previous message UID
-            if (action == Action.EDIT_DRAFT) {
+            if (action == Action.EDIT_DRAFT || action == Action.DECRYPT_DRAFT) {
                 relatedMessageReference = null;
             }
 
@@ -1077,13 +1077,65 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         } else if (id == R.id.read_receipt) {
             onReadReceipt();
         } else if (id == R.id.encrypt_or_decrypt) {
-            String encryptString = getString(R.string.enable_JARL);
-            String notEncryptString = getString(R.string.disable_JARL);
+            if (action != Action.DECRYPT_DRAFT) {
+                String encryptString = getString(R.string.enable_JARL);
+                String notEncryptString = getString(R.string.disable_JARL);
 
-            if (item.getTitle().toString().equals(encryptString)) {
+                if (item.getTitle().toString().equals(encryptString)) {
+                    Context buildContext = this;
+                    AlertDialog.Builder builder = new AlertDialog.Builder(buildContext);
+                    builder.setTitle("Enter encryption key");
+
+                    // Set up the input
+                    final EditText input = new EditText(this);
+                    // Specify the type of input expected; this, for example, sets the input as a password, and will mask the text
+                    input.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                    builder.setView(input);
+
+                    // Set up the buttons
+                    builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            keyEncryptOrDecrypt = input.getText().toString();
+                            if (JARL.isValidKey(keyEncryptOrDecrypt)) {
+                                encryptOrDecrypt = true;
+                                item.setTitle(R.string.disable_JARL);
+                                dialog.cancel();
+                            } else {
+                                keyEncryptOrDecrypt = "";
+                                encryptOrDecrypt = false;
+
+                                AlertDialog.Builder builderError = new AlertDialog.Builder(buildContext);
+                                builderError.setTitle("Key is not valid");
+                                builderError.setMessage("Key must be the length of 128 bits or 16 bytes when converted to bytes using UTF-8 encoding.");
+
+                                builderError.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+                                    }
+                                });
+                                builderError.show();
+                            }
+                        }
+                    });
+                    builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.cancel();
+                        }
+                    });
+
+                    builder.show();
+                } else {
+                    item.setTitle(R.string.enable_JARL);
+                    keyEncryptOrDecrypt = "";
+                    encryptOrDecrypt = false;
+                }
+            } else {
                 Context buildContext = this;
                 AlertDialog.Builder builder = new AlertDialog.Builder(buildContext);
-                builder.setTitle("Enter encryption key");
+                builder.setTitle("Enter decryption key");
 
                 // Set up the input
                 final EditText input = new EditText(this);
@@ -1095,14 +1147,39 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 builder.setPositiveButton("OK", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        keyEncrypt = input.getText().toString();
-                        if (JARL.isValidKey(keyEncrypt)) {
-                            encrypt = true;
-                            item.setTitle(R.string.disable_JARL);
-                            dialog.cancel();
+                        keyEncryptOrDecrypt = input.getText().toString();
+                        if (JARL.isValidKey(keyEncryptOrDecrypt)) {
+                            encryptOrDecrypt = true;
+                            builder.setMessage("Wait while mesage is being decrypted...");
+                            try {
+                                var decryptedSubject = JARL.decryptHexStringToString(Utility.stripNewLines(subjectView.getText().toString()), keyEncryptOrDecrypt);
+                                var decryptedMessage = JARL.decryptHexStringToString(CrLfConverter.toCrLf(messageContentView.getText()), keyEncryptOrDecrypt);
+
+                                subjectView.setText(decryptedSubject);
+                                messageContentView.setText(decryptedMessage);
+                                dialog.cancel();
+                            } catch (Exception e) {
+                                Timber.e(e.getMessage());
+                                keyEncryptOrDecrypt = "";
+                                encryptOrDecrypt = false;
+
+                                AlertDialog.Builder builderError = new AlertDialog.Builder(buildContext);
+                                builderError.setTitle("Decryption Failed");
+                                builderError.setMessage("An error happened when decrpyting.");
+
+                                builderError.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+                                    }
+                                });
+                                builderError.show();
+                            }
+
+
                         } else {
-                            keyEncrypt = "";
-                            encrypt = false;
+                            keyEncryptOrDecrypt = "";
+                            encryptOrDecrypt = false;
 
                             AlertDialog.Builder builderError = new AlertDialog.Builder(buildContext);
                             builderError.setTitle("Key is not valid");
@@ -1126,12 +1203,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                 });
 
                 builder.show();
-            } else {
-                item.setTitle(R.string.enable_JARL);
-                keyEncrypt = "";
-                encrypt = false;
             }
-
 
         } else {
             return super.onOptionsItemSelected(item);
@@ -1152,6 +1224,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         // Disable the 'Save' menu option if Drafts folder is set to -NONE-
         if (!account.hasDraftsFolder()) {
             menu.findItem(R.id.save).setEnabled(false);
+            findViewById(R.id.encrypt_or_decrypt);
         }
 
         return true;
@@ -1160,6 +1233,11 @@ public class MessageCompose extends K9Activity implements OnClickListener,
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         super.onPrepareOptionsMenu(menu);
+        var encryptMenu = menu.findItem(R.id.encrypt_or_decrypt);
+        if (action == Action.DECRYPT_DRAFT) {
+            var newTitle = getString(R.string.decrypt_JARL);
+            encryptMenu.setTitle(newTitle);
+        }
 
         recipientPresenter.onPrepareOptionsMenu(menu);
 
@@ -1357,6 +1435,10 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                     break;
                 }
                 case EDIT_DRAFT: {
+                    processDraftMessage(messageViewInfo);
+                    break;
+                }
+                case DECRYPT_DRAFT: {
                     processDraftMessage(messageViewInfo);
                     break;
                 }
@@ -1633,7 +1715,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
         String body = mailTo.getBody();
         if (body != null && !body.isEmpty()) {
-            messageContentView.setText(CrLfConverter.toLf(body));
+            messageContentView.setText(body);
         }
     }
 
@@ -2031,7 +2113,9 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         REPLY_ALL(R.string.compose_title_reply_all),
         FORWARD(R.string.compose_title_forward),
         FORWARD_AS_ATTACHMENT(R.string.compose_title_forward_as_attachment),
-        EDIT_DRAFT(R.string.compose_title_compose);
+        EDIT_DRAFT(R.string.compose_title_compose),
+
+        DECRYPT_DRAFT(R.string.decrypted_message);
 
         private final int titleResource;
 

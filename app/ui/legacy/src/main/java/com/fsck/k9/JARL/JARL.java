@@ -109,6 +109,8 @@ public class JARL {
         Pair<Integer[], Integer[]> splitKey = split128BitTo64Bit(keyInt);
         Matrix keyMatrix = generateMatrixFrom64Bit(XOR(splitKey.getFirst(), splitKey.getSecond()));
 
+//        SysoutLn(keyMatrix);
+
         byte[] ciphertext = new byte[plaintext.length];
         int currentIndex = 0;
 
@@ -118,14 +120,23 @@ public class JARL {
             Integer[] left = lrPair.getFirst();
             Integer[] right = lrPair.getSecond();
 
+//            SysoutLn("Left = " + Arrays.toString(left));
+//            SysoutLn("Right = " + Arrays.toString(right));
+
             for (int i = 0; i < 16; i++) {
                 Matrix rightMatrix = generateMatrixFrom64Bit(right);
+//                SysoutLn(rightMatrix);
+//                SysoutLn(keyMatrix);
                 Matrix roundKey = rightMatrix.multiply(keyMatrix).transpose();
+//                SysoutLn(roundKey);
                 modulo16(roundKey);
+//                SysoutLn(roundKey);
                 Integer[] tempRight = right;
                 right = cipherFunctionEncrypt(left, roundKey);
 
                 left = tempRight;
+//                SysoutLn("Left = " + Arrays.toString(left));
+//                SysoutLn("Right = " + Arrays.toString(right));
             }
 
             List<Integer> resultList = new ArrayList<Integer>(left.length + right.length);
@@ -215,19 +226,27 @@ public class JARL {
     }
 
     public static Integer[] cipherFunctionEncrypt(Integer[] bytes, Matrix roundKey) {
+//        SysoutLn(roundKey);
         Map<Integer, int[]> playfairMap = fillPlayFairMatrix(roundKey);
         List<Pair<Integer, Integer>> bigrams = split64BitTo4BitBigrams(bytes);
         Integer[] ret = new Integer[bigrams.size()];
 
+//        playfairMap.forEach((Integer key, int[] val) -> {
+//            SysoutLn(key + "=" + Arrays.toString(val));
+//        });
+
+//        SysoutLn(bigrams);
         for (int i = 0; i < bigrams.size(); i++) {
             Pair<Integer, Integer> bigram = bigrams.get(i);
             Pair<Integer, Integer> result = playfairAlgorithmEncrypt(bigram, roundKey, playfairMap);
             ret[i] = ((result.getFirst() << 4) | result.getSecond());
         }
+//        SysoutLn(Arrays.toString(ret));
 
         Matrix shiftMatrix = generateMatrixFrom64Bit(ret);
         permutateEncrypt(shiftMatrix, roundKey);
 
+//        SysoutLn(shiftMatrix);
 
         return generate64BitFromMatrix(shiftMatrix);
     }
@@ -245,16 +264,16 @@ public class JARL {
         Integer[] ret = new Integer[bigrams.size()];
 //        playfairMap.forEach((key, val) -> {
 //            Sysout(key + " = ");
-//            SysoutLn(Arrays.toString(val));
+////            SysoutLn(Arrays.toString(val));
 //        });
-//        SysoutLn(bigrams);
+////        SysoutLn(bigrams);
 
         for (int i = 0; i < bigrams.size(); i++) {
             Pair<Integer, Integer> bigram = bigrams.get(i);
             Pair<Integer, Integer> result = playfairAlgorithmDecrypt(bigram, roundKey, playfairMap);
             ret[i] = ((result.getFirst() << 4) | result.getSecond());
         }
-//        SysoutLn(Arrays.toString(ret));
+////        SysoutLn(Arrays.toString(ret));
 
         return ret;
     }
@@ -429,6 +448,7 @@ public class JARL {
         for (int i = 0; i < matrix.rows(); i++) {
             for (int j = 0; j < matrix.columns(); j++) {
                 int value = matrix.getElement(i, j);
+////                SysoutLn(value);
                 if (!existInMatrix.contains(value)) {
                     existInMatrix.add(value);
                     ret.put(value, new int[]{i, j});
@@ -437,6 +457,10 @@ public class JARL {
                 }
             }
         }
+
+//        ret.forEach((Integer key, int[] val) -> {
+////            SysoutLn(key + "=" + Arrays.toString(val));
+//        });
 
         int numberFill = 0;
         for (int element : emptyIndex) {
