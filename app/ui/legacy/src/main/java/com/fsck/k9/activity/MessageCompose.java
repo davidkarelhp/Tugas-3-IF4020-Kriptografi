@@ -1313,66 +1313,85 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                         });
 
                         try {
+                            boolean publicKeysValid = false;
                             String[] publicKeys = divideString(publicKeysSign);
-                            String publicKey1 = publicKeys[0];
-                            String publicKey2 = publicKeys[1];
+                            BigInteger publicKey1BI = null;
+                            BigInteger publicKey2BI = null;
 
-                            Log.d("ECDSA-PUB", publicKey1 + " " + publicKey2);
-                            String wholeMessageText = CrLfConverter.toCrLf(messageContentView.getText());
-                            if (signatureFormatExist(wholeMessageText)) {
-                                String[] signatures = extractSignature(wholeMessageText);
-                                String signature1 = signatures[0];
-                                String signature2 = signatures[1];
-                                Log.d("ECDSA-SIGN", signature1 + " " + signature2);
+                            if (publicKeys != null) {
+                                String publicKey1 = publicKeys[0];
+                                String publicKey2 = publicKeys[1];
 
-                                ECDSA ecc = new ECDSA();
-                                ecc.setPublicKey(new BigInteger(publicKey1, 16), new BigInteger(publicKey2, 16));
-
-                                Log.d("ECDSA-SIGN-1", "-- " + signature1 + " -- " + ("4cfcb4e674901a7a9820fd1aab69f24e9d47097b06b39cf8e40fae053ad72ec6".equals(signature1) ? "True" : "False")
-                                    + " -- " + signature1.length());
-                                Log.d("ECDSA-SIGN-2", "-- " + signature2 + " -- " + ("9e5d46baf187bbd141e0f72606e29bd25849b82133c92bb35ad107da74fec37e".equals(signature2) ? "True" : "False")
-                                    + " -- " + signature2.length());
-                                Log.d("ECDSA-DBG", "Start to convert signatures to big integer");
-
-                                BigInteger signature1BigInt = null, signature2BigInt = null;
-                                boolean successConvertPubKeysToBigInt = false;
                                 try {
-                                    signature1BigInt = new BigInteger(signature1, 16);
-                                    signature2BigInt = new BigInteger(signature2, 16);
-                                    successConvertPubKeysToBigInt = true;
+                                    publicKey1BI = new BigInteger(publicKey1, 16);
+                                    publicKey2BI = new BigInteger(publicKey2, 16);
+                                    publicKeysValid = true;
                                 } catch (Exception e) {
-                                    buildInfo.setMessage("Public keys are invalid");
+
                                 }
-
-                                if (successConvertPubKeysToBigInt) {
-                                    Log.d("ECDSA-DBG", "Finished converting signatures to big integer");
-
-                                    String messageText = extractTextBeforeDsTag(CrLfConverter.toCrLf(messageContentView.getText()));
-
-                                    Log.d("ECDSA-TEXT", messageText + " -- " + (messageText.equals("Test Message") ? "True": "False"));
-
-                                    boolean verified = ecc.verifySignature(
-                                        new BigInteger[] { signature1BigInt, signature2BigInt },
-                                        messageText
-                                    );
-
-                                    Log.d("ECDSA-VERIFIED", verified ? "True" : "False");
-                                    if (verified) {
-                                        buildInfo.setMessage("Sign verified");
-                                    } else {
-                                        buildInfo.setMessage("Sign not verified");
-                                    }
-                                    buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            dialog.cancel();
-                                        }
-                                    });
-                                }
-
-                            } else {
-                                buildInfo.setMessage("Message doen't contain signing format");
+                                Log.d("ECDSA-PUB", publicKey1 + " " + publicKey2);
                             }
+
+                            String wholeMessageText = CrLfConverter.toCrLf(messageContentView.getText());
+                            if (publicKeys != null && publicKeysSign.length() != 0 && publicKeysValid) {
+                                if ( signatureFormatExist(wholeMessageText)) {
+                                    String[] signatures = extractSignature(wholeMessageText);
+                                    String signature1 = signatures[0];
+                                    String signature2 = signatures[1];
+                                    Log.d("ECDSA-SIGN", signature1 + " " + signature2);
+
+                                    ECDSA ecc = new ECDSA();
+                                    ecc.setPublicKey(publicKey1BI, publicKey2BI);
+
+                                    Log.d("ECDSA-SIGN-1", "-- " + signature1 + " -- " + ("4cfcb4e674901a7a9820fd1aab69f24e9d47097b06b39cf8e40fae053ad72ec6".equals(signature1) ? "True" : "False")
+                                        + " -- " + signature1.length());
+                                    Log.d("ECDSA-SIGN-2", "-- " + signature2 + " -- " + ("9e5d46baf187bbd141e0f72606e29bd25849b82133c92bb35ad107da74fec37e".equals(signature2) ? "True" : "False")
+                                        + " -- " + signature2.length());
+                                    Log.d("ECDSA-DBG", "Start to convert signatures to big integer");
+
+                                    BigInteger signature1BigInt = null, signature2BigInt = null;
+                                    boolean successConvertPubKeysToBigInt = false;
+                                    try {
+                                        signature1BigInt = new BigInteger(signature1, 16);
+                                        signature2BigInt = new BigInteger(signature2, 16);
+                                        successConvertPubKeysToBigInt = true;
+                                    } catch (Exception e) {
+                                        buildInfo.setMessage("Public keys are invalid");
+                                    }
+
+                                    if (successConvertPubKeysToBigInt) {
+                                        Log.d("ECDSA-DBG", "Finished converting signatures to big integer");
+
+                                        String messageText = extractTextBeforeDsTag(CrLfConverter.toCrLf(messageContentView.getText()));
+
+                                        Log.d("ECDSA-TEXT", messageText + " -- " + (messageText.equals("Test Message") ? "True": "False"));
+
+                                        boolean verified = ecc.verifySignature(
+                                            new BigInteger[] { signature1BigInt, signature2BigInt },
+                                            messageText
+                                        );
+
+                                        Log.d("ECDSA-VERIFIED", verified ? "True" : "False");
+                                        if (verified) {
+                                            buildInfo.setMessage("Sign verified");
+                                        } else {
+                                            buildInfo.setMessage("Sign not verified");
+                                        }
+                                        buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                            @Override
+                                            public void onClick(DialogInterface dialog, int which) {
+                                                dialog.cancel();
+                                            }
+                                        });
+                                    }
+
+                                } else {
+                                    buildInfo.setMessage("Message doen't contain signing format");
+                                }
+                            } else {
+                                buildInfo.setMessage("Public keys are not in valid format");
+                            }
+
 
                         } catch (Exception e) {
                             Log.e("ECDSA-ERROR", e.getMessage());
