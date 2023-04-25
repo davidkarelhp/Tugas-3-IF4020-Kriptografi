@@ -18,13 +18,35 @@
 - Saat dikirim pesan akan dienkripsi dengan menggunakan kunci yang sudah diberikan
 - Untuk membatalkan pengenkripsian sebelum dikirm, tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal) dan pilih "Don't Encrypt Message"
 
-## Melakukan Tanda Tangan pada Pesan
+## Melakukan Tanda Tangan Pada Pesan
 - Buat pesan baru dengan menekan tombol dengan lambang pensil pada ujung kanan bawah layar
 - Tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal)
 - Pilih "Sign Message"
 - Masukkan kunci privat (jika kunci privat tidak valid, aplikasi akan memberi peringatan)
 - Saat dikirim pesan akan ditandatangani dengan menggunakan kunci privat yang sudah diberikan
 - Untuk membatalkan penandatanganan sebelum dikirm, tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal) dan pilih "Don't Sign Message"
+
+<strong>Enkripsi dan Tanda Tangan dapat dilakukan bersamaan, yang dilakukan pertama adalah tanda tangan lalu selanjutnya enkripsi.</strong>
+
+## Melakukan Dekripsi Pesan
+- Pilih salah satu <i>email</i> pada <i>inbox</i>, surat terkirim, atau spam
+- Tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal)
+- Pilih "Process message"
+- Pengguna akan dialihkan ke suatu halaman yang dapat digunakan juga untuk mengirim pesan hasil proses atau menyimpan sebagai draf untuk memudahkan pengguna
+- Tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal)
+- Pilih "Decrypt Message"
+- Masukkan kunci dekripsi (jika kunci dekripsi tidak valid, aplikasi akan memberi peringatan)
+- Pesan akan ditampilkan dalam bentuk setelah didekripsi
+
+## Melakukan Verifikasi Tanda Tangan Pesan
+- Pilih salah satu <i>email</i> pada <i>inbox</i>, surat terkirim, atau spam
+- Tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal)
+- Pilih "Process message"
+- Pengguna akan dialihkan ke suatu halaman yang dapat digunakan juga untuk mengirim pesan hasil proses atau menyimpan sebagai draf untuk memudahkan pengguna
+- Tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal)
+- Pilih "Verify Sign Message"
+- Masukkan kedua dengan kunci publik dengan cara meng-<i>append</i> kedua kunci tersebut (jika kunci publik tidak valid, aplikasi akan memberi peringatan)
+- Aplikasi akan memberikan <i>alert</i> pesan terverifikasi atau tidak
 
 # K-9 Mail
 
