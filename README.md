@@ -1,3 +1,31 @@
+# Cara Menjalankan
+- Clone <i>repository</i> ini ke perangkat lokal
+- Buka direktori hasil <i>clone</i> dari <i>repository</i> ini dengan Android Studio
+- Tunggu sampai Android Studio selesai melakukan <i>setup</i> dan <i>indexing</i>
+- Jalankan program dengan <i>run configuration</i> <b>app.k9mail</b> pada perangkat virtual atau fisik
+
+# Cara Menggunakan
+## Membangkitkan Private Key dan Public Key
+- Tarik <i> navigation drawer</i> pada sebelah kiri layar
+- Tekan tombol "Generate Key"
+- Aplikasi akan menampilkan satu buah <i>private key</i> dan dua buah <i>public key</i>, kunci-kunci ini dapat di-<i>copy</i> dengan cara memblok (menekan lama) tulisan pada kunci-kunci tersebut
+
+## Melakukan Enkripsi Pesan
+- Buat pesan baru dengan menekan tombol dengan lambang pensil pada ujung kanan bawah layar
+- Tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal)
+- Pilih "Encrypt Message"
+- Masukkan kunci enkripsi (jika kunci enkripsi tidak valid, aplikasi akan memberi peringatan)
+- Saat dikirim pesan akan dienkripsi dengan menggunakan kunci yang sudah diberikan
+- Untuk membatalkan pengenkripsian sebelum dikirm, tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal) dan pilih "Don't Encrypt Message"
+
+## Melakukan Tanda Tangan pada Pesan
+- Buat pesan baru dengan menekan tombol dengan lambang pensil pada ujung kanan bawah layar
+- Tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal)
+- Pilih "Sign Message"
+- Masukkan kunci privat (jika kunci privat tidak valid, aplikasi akan memberi peringatan)
+- Saat dikirim pesan akan ditandatangani dengan menggunakan kunci privat yang sudah diberikan
+- Untuk membatalkan penandatanganan sebelum dikirm, tekan tombol <i>options</i> pada bagian kanan atas layar (tombol dengan lambang 3 titik yang tersusun vertikal) dan pilih "Don't Sign Message"
+
 # K-9 Mail
 
 [![Latest release](https://img.shields.io/github/release/thundernest/k-9.svg?style=flat-square)](https://github.com/thundernest/k-9/releases/latest)
