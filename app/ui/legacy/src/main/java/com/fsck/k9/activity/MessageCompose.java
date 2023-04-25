@@ -1234,7 +1234,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
                 Context buildContext = this;
                 AlertDialog.Builder builder = new AlertDialog.Builder(buildContext);
-                builder.setTitle("Enter encryption key");
+                builder.setTitle("Enter private key");
 
                 // Set up the input
                 final EditText input = new EditText(this);
@@ -1247,10 +1247,34 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         privateKeySign = input.getText().toString();
-                        signOrUnsign = true;
-                        item.setTitle(R.string.unsign_message);
-                        dialog.cancel();
 
+                        boolean privateKeyValid = false;
+
+                        try {
+                            BigInteger privateKey = new BigInteger(privateKeySign, 16);
+                            privateKeyValid = true;
+                        } catch (Exception e) {
+
+                        }
+
+                        if (privateKeyValid) {
+                            signOrUnsign = true;
+                            item.setTitle(R.string.unsign_message);
+                            dialog.cancel();
+                        } else {
+                            privateKeySign = "";
+                            AlertDialog.Builder builderError = new AlertDialog.Builder(buildContext);
+                            builderError.setTitle("Invalid Private Key");
+                            builderError.setMessage("Given private key is not in the correct format");
+
+                            builderError.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.cancel();
+                                }
+                            });
+                            builderError.show();
+                        }
                     }
                 });
                 builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
