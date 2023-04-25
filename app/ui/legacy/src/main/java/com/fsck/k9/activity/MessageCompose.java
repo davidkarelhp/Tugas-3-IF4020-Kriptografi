@@ -1159,7 +1159,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             } else {
                 Context buildContext = this;
                 AlertDialog.Builder builder = new AlertDialog.Builder(buildContext);
-                builder.setTitle("Enter private key");
+                builder.setTitle("Enter decryption key");
 
                 // Set up the input
                 final EditText input = new EditText(this);
@@ -1234,7 +1234,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
 
                 Context buildContext = this;
                 AlertDialog.Builder builder = new AlertDialog.Builder(buildContext);
-                builder.setTitle("Enter private key");
+                builder.setTitle("Enter encryption key");
 
                 // Set up the input
                 final EditText input = new EditText(this);
@@ -1281,6 +1281,12 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                         builder.setMessage("Wait while message signing is being verified...");
                         AlertDialog.Builder buildInfo = new AlertDialog.Builder(buildContext);
                         buildInfo.setTitle("Verification Result");
+                        buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialog, int which) {
+                                dialog.cancel();
+                            }
+                        });
 
                         try {
                             String[] publicKeys = divideString(publicKeysSign);
@@ -1288,61 +1294,60 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                             String publicKey2 = publicKeys[1];
 
                             Log.d("ECDSA-PUB", publicKey1 + " " + publicKey2);
-                            String[] signatures = extractSignature(CrLfConverter.toCrLf(messageContentView.getText()));
-                            String signature1 = signatures[0];
-                            String signature2 = signatures[1];
-                            Log.d("ECDSA-SIGN", signature1 + " " + signature2);
+                            String wholeMessageText = CrLfConverter.toCrLf(messageContentView.getText());
+                            if (signatureFormatExist(wholeMessageText)) {
+                                String[] signatures = extractSignature(wholeMessageText);
+                                String signature1 = signatures[0];
+                                String signature2 = signatures[1];
+                                Log.d("ECDSA-SIGN", signature1 + " " + signature2);
 
-                            ECDSA ecc = new ECDSA();
-                            ecc.setPublicKey(new BigInteger(publicKey1, 16), new BigInteger(publicKey2, 16));
+                                ECDSA ecc = new ECDSA();
+                                ecc.setPublicKey(new BigInteger(publicKey1, 16), new BigInteger(publicKey2, 16));
 
-                            buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.cancel();
+                                Log.d("ECDSA-SIGN-1", "-- " + signature1 + " -- " + ("4cfcb4e674901a7a9820fd1aab69f24e9d47097b06b39cf8e40fae053ad72ec6".equals(signature1) ? "True" : "False")
+                                    + " -- " + signature1.length());
+                                Log.d("ECDSA-SIGN-2", "-- " + signature2 + " -- " + ("9e5d46baf187bbd141e0f72606e29bd25849b82133c92bb35ad107da74fec37e".equals(signature2) ? "True" : "False")
+                                    + " -- " + signature2.length());
+                                Log.d("ECDSA-DBG", "Start to convert signatures to big integer");
+
+                                BigInteger signature1BigInt = null, signature2BigInt = null;
+                                boolean successConvertPubKeysToBigInt = false;
+                                try {
+                                    signature1BigInt = new BigInteger(signature1, 16);
+                                    signature2BigInt = new BigInteger(signature2, 16);
+                                    successConvertPubKeysToBigInt = true;
+                                } catch (Exception e) {
+                                    buildInfo.setMessage("Public keys are invalid");
                                 }
-                            });
 
-                            Log.d("ECDSA-SIGN-1", "-- " + signature1 + " -- " + ("4cfcb4e674901a7a9820fd1aab69f24e9d47097b06b39cf8e40fae053ad72ec6".equals(signature1) ? "True" : "False")
-                            + " -- " + signature1.length());
-                            Log.d("ECDSA-SIGN-2", "-- " + signature2 + " -- " + ("9e5d46baf187bbd141e0f72606e29bd25849b82133c92bb35ad107da74fec37e".equals(signature2) ? "True" : "False")
-                                + " -- " + signature2.length());
-                            Log.d("ECDSA-DBG", "Start to convert signatures to big integer");
+                                if (successConvertPubKeysToBigInt) {
+                                    Log.d("ECDSA-DBG", "Finished converting signatures to big integer");
 
-                            BigInteger signature1BigInt = null, signature2BigInt = null;
-                            boolean successConvertPubKeysToBigInt = false;
-                            try {
-                                signature1BigInt = new BigInteger(signature1, 16);
-                                signature2BigInt = new BigInteger(signature2, 16);
-                                successConvertPubKeysToBigInt = true;
-                            } catch (Exception e) {
-                                buildInfo.setMessage("Public keys are invalid");
-                            }
+                                    String messageText = extractTextBeforeDsTag(CrLfConverter.toCrLf(messageContentView.getText()));
 
-                            if (successConvertPubKeysToBigInt) {
-                                Log.d("ECDSA-DBG", "Finished converting signatures to big integer");
+                                    Log.d("ECDSA-TEXT", messageText + " -- " + (messageText.equals("Test Message") ? "True": "False"));
 
-                                String messageText = extractTextBeforeDsTag(CrLfConverter.toCrLf(messageContentView.getText()));
+                                    boolean verified = ecc.verifySignature(
+                                        new BigInteger[] { signature1BigInt, signature2BigInt },
+                                        messageText
+                                    );
 
-                                Log.d("ECDSA-TEXT", messageText + " -- " + (messageText.equals("Test Message") ? "True": "False"));
-
-                                boolean verified = ecc.verifySignature(
-                                    new BigInteger[] { signature1BigInt, signature2BigInt },
-                                    messageText
-                                );
-
-                                Log.d("ECDSA-VERIFIED", verified ? "True" : "False");
-                                if (verified) {
-                                    buildInfo.setMessage("Sign verified");
-                                } else {
-                                    buildInfo.setMessage("Sign not verified");
-                                }
-                                buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                                    @Override
-                                    public void onClick(DialogInterface dialog, int which) {
-                                        dialog.cancel();
+                                    Log.d("ECDSA-VERIFIED", verified ? "True" : "False");
+                                    if (verified) {
+                                        buildInfo.setMessage("Sign verified");
+                                    } else {
+                                        buildInfo.setMessage("Sign not verified");
                                     }
-                                });
+                                    buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            dialog.cancel();
+                                        }
+                                    });
+                                }
+
+                            } else {
+                                buildInfo.setMessage("Message doen't contain signing format");
                             }
 
                         } catch (Exception e) {
@@ -1368,18 +1373,28 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         return true;
     }
 
-    public static String removeNonAlphaNumeric(String str) {
-        int start = 0, end = str.length() - 1;
-        while (start < str.length() && !Character.isLetterOrDigit(str.charAt(start))) {
-            start++;
+    public static boolean signatureFormatExist(String str) {
+        boolean ret = false;
+        String startTag = "<ds>";
+        String endTag = "\n</ds>";
+        int startIndex = str.indexOf(startTag);
+        int endIndex = str.indexOf(endTag);
+
+        Log.d("SIGNATURE-CHECK", str);
+        Log.d("SIGNATURE-CHECK", startIndex + " " + endIndex);
+        if (startIndex != -1 && endIndex != -1) {
+
+            startIndex += startTag.length();
+            str = str.substring(startIndex, endIndex);
+            Log.d("SIGNATURE-CHECK", str);
+
+            if (str.contains("\n")) {
+                Log.d("SIGNATURE-CHECK", "contains \\n");
+                ret = true;
+            }
         }
-        while (end >= 0 && !Character.isLetterOrDigit(str.charAt(end))) {
-            end--;
-        }
-        if (start > end) {
-            return "";
-        }
-        return str.substring(start, end + 1);
+
+        return ret;
     }
 
     public static String[] extractSignature(String str) {
@@ -2324,7 +2339,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         FORWARD_AS_ATTACHMENT(R.string.compose_title_forward_as_attachment),
         EDIT_DRAFT(R.string.compose_title_compose),
 
-        DECRYPT_DRAFT(R.string.decrypted_message);
+        DECRYPT_DRAFT(R.string.process_message);
 
         private final int titleResource;
 

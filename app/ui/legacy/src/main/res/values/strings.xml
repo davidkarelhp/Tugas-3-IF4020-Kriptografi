@@ -91,7 +91,8 @@ Please submit bug reports, contribute new features and ask questions at
     <string name="compose_title_reply_all">Reply all</string>
     <string name="compose_title_forward">Forward</string>
     <string name="compose_title_forward_as_attachment">Forward as attachment</string>
-    <string name="decrypted_message">Decrypted message</string>
+    <string name="decrypted_message">Decrypt message</string>
+    <string name="process_message">Process message</string>
 
     <string name="choose_account_title">Choose Account</string>
     <string name="choose_folder_title">Choose Folder</string>
