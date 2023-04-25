@@ -21,6 +21,7 @@ import android.content.Intent;
 import android.content.IntentSender;
 import android.content.IntentSender.SendIntentException;
 import android.content.pm.ActivityInfo;
+import android.content.pm.Signature;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -1278,7 +1279,10 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                         publicKeysSign = input.getText().toString();
                         signOrUnsign = true;
                         builder.setMessage("Wait while message signing is being verified...");
-//                        try {
+                        AlertDialog.Builder buildInfo = new AlertDialog.Builder(buildContext);
+                        buildInfo.setTitle("Verification Result");
+
+                        try {
                             String[] publicKeys = divideString(publicKeysSign);
                             String publicKey1 = publicKeys[0];
                             String publicKey2 = publicKeys[1];
@@ -1292,9 +1296,6 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                             ECDSA ecc = new ECDSA();
                             ecc.setPublicKey(new BigInteger(publicKey1, 16), new BigInteger(publicKey2, 16));
 
-                            AlertDialog.Builder buildInfo = new AlertDialog.Builder(buildContext);
-                            buildInfo.setTitle("Verification Result");
-
                             buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {
@@ -1302,43 +1303,54 @@ public class MessageCompose extends K9Activity implements OnClickListener,
                                 }
                             });
 
-                            Log.d("ECDSA-TEXT", extractTextBeforeDsTag(CrLfConverter.toCrLf(messageContentView.getText())));
-                            if (ecc.verifySignature(
-                                new BigInteger[] {new BigInteger(signature1, 16), new BigInteger(signature2, 16)},
-                                extractTextBeforeDsTag(CrLfConverter.toCrLf(messageContentView.getText()))
-                            )) {
-                                buildInfo.setMessage("Sign verified");
-                            } else {
-                                buildInfo.setMessage("Sign not verified");
+                            Log.d("ECDSA-SIGN-1", "-- " + signature1 + " -- " + ("4cfcb4e674901a7a9820fd1aab69f24e9d47097b06b39cf8e40fae053ad72ec6".equals(signature1) ? "True" : "False")
+                            + " -- " + signature1.length());
+                            Log.d("ECDSA-SIGN-2", "-- " + signature2 + " -- " + ("9e5d46baf187bbd141e0f72606e29bd25849b82133c92bb35ad107da74fec37e".equals(signature2) ? "True" : "False")
+                                + " -- " + signature2.length());
+                            Log.d("ECDSA-DBG", "Start to convert signatures to big integer");
+
+                            BigInteger signature1BigInt = null, signature2BigInt = null;
+                            boolean successConvertPubKeysToBigInt = false;
+                            try {
+                                signature1BigInt = new BigInteger(signature1, 16);
+                                signature2BigInt = new BigInteger(signature2, 16);
+                                successConvertPubKeysToBigInt = true;
+                            } catch (Exception e) {
+                                buildInfo.setMessage("Public keys are invalid");
                             }
 
-                            buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.cancel();
+                            if (successConvertPubKeysToBigInt) {
+                                Log.d("ECDSA-DBG", "Finished converting signatures to big integer");
+
+                                String messageText = extractTextBeforeDsTag(CrLfConverter.toCrLf(messageContentView.getText()));
+
+                                Log.d("ECDSA-TEXT", messageText + " -- " + (messageText.equals("Test Message") ? "True": "False"));
+
+                                boolean verified = ecc.verifySignature(
+                                    new BigInteger[] { signature1BigInt, signature2BigInt },
+                                    messageText
+                                );
+
+                                Log.d("ECDSA-VERIFIED", verified ? "True" : "False");
+                                if (verified) {
+                                    buildInfo.setMessage("Sign verified");
+                                } else {
+                                    buildInfo.setMessage("Sign not verified");
                                 }
-                            });
+                                buildInfo.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
+                                    @Override
+                                    public void onClick(DialogInterface dialog, int which) {
+                                        dialog.cancel();
+                                    }
+                                });
+                            }
 
-                            buildInfo.show();
+                        } catch (Exception e) {
+                            Log.e("ECDSA-ERROR", e.getMessage());
+                            buildInfo.setMessage("An error happened while verifying signing");
+                        }
 
-//                        } catch (Exception e) {
-//                            Timber.e(e.getMessage());
-//                            publicKeysSign = "";
-//                            signOrUnsign = false;
-//
-//                            AlertDialog.Builder builderError = new AlertDialog.Builder(buildContext);
-//                            builderError.setTitle("Verification Process Failed");
-//                            builderError.setMessage("An error happened when trying to verify.");
-//
-//                            builderError.setPositiveButton("Ok", new DialogInterface.OnClickListener() {
-//                                @Override
-//                                public void onClick(DialogInterface dialog, int which) {
-//                                    dialog.cancel();
-//                                }
-//                            });
-//                            builderError.show();
-//                        }
-
+                        buildInfo.show();
                     }
                 });
                 builder.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
@@ -1356,14 +1368,30 @@ public class MessageCompose extends K9Activity implements OnClickListener,
         return true;
     }
 
-    public static String[] extractSignature(String str) {
-        int start = str.indexOf("\n<ds>") + "\n<ds>".length();
-        int end = str.indexOf("\n</ds>", start);
-        if (start < 0 || end < 0) {
-            // Signature key not found
-            return null;
+    public static String removeNonAlphaNumeric(String str) {
+        int start = 0, end = str.length() - 1;
+        while (start < str.length() && !Character.isLetterOrDigit(str.charAt(start))) {
+            start++;
         }
-        return str.substring(start, end).split("\\n");
+        while (end >= 0 && !Character.isLetterOrDigit(str.charAt(end))) {
+            end--;
+        }
+        if (start > end) {
+            return "";
+        }
+        return str.substring(start, end + 1);
+    }
+
+    public static String[] extractSignature(String str) {
+        String startTag = "<ds>";
+        String endTag = "</ds>";
+        int startIndex = str.indexOf(startTag);
+        int endIndex = str.indexOf(endTag);
+        Log.d("ECDSA", startIndex + " " + endIndex + " \n" + str);
+        String keysText = str.substring(startIndex + startTag.length(), endIndex).trim();
+        String[] signatures = keysText.split("\\n");
+        signatures[0] = signatures[0].substring(0, signatures[0].length() - 1);
+        return signatures;
     }
 
     public static String extractTextBeforeDsTag(String str) {
@@ -1372,7 +1400,7 @@ public class MessageCompose extends K9Activity implements OnClickListener,
             // <ds> tag not found
             return null;
         }
-        return str.substring(0, index);
+        return str.substring(0, index - 1);
     }
 
     public static String[] divideString(String str) {
